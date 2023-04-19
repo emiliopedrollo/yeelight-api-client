@@ -40,7 +40,7 @@ class Response
             return;
         }
 
-        $this->result = $response['result'];        
+        $this->result = $response['result'];
     }
 
     /**
@@ -65,5 +65,10 @@ class Response
     public function isSuccess(): bool
     {
         return is_null($this->exception);
+    }
+
+    public function isNotification(): bool
+    {
+        return isset($this->result['method']);
     }
 }
