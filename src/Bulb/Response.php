@@ -40,6 +40,12 @@ class Response
             return;
         }
 
+        if (
+            isset($response['method'])) {
+            $this->result = $response;
+            return;
+        }
+
         $this->result = $response['result'];
     }
 
