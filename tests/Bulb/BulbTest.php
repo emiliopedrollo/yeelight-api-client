@@ -3,6 +3,7 @@
 namespace tests\Bulb;
 
 use PHPUnit\Framework\MockObject\MockObject;
+use React\Promise\RejectedPromise;
 use Socket\Raw\Socket;
 use Yeelight\Bulb\Bulb;
 use Yeelight\Bulb\BulbProperties;
@@ -48,11 +49,9 @@ class BulbTest extends \PHPUnit\Framework\TestCase
             ->willReturn(json_encode($response));
 
         $result = $this->bulb->getProp($properties);
-        $result->then(function (Response $result) use ($expected) {
+        $result->done(function (Response $result) use ($expected) {
             $this->assertEquals($expected, $result);
             $this->assertTrue($result->isSuccess());
-        }, function () {
-            $this->fail('This should not happen');
         });
     }
 
@@ -104,11 +103,73 @@ class BulbTest extends \PHPUnit\Framework\TestCase
             ->willReturn(self::ERROR_RESPONSE);
 
         $response = $this->bulb->setCtAbx($ctValue, $effect, $duration);
-        $response->then(function (Response $result) {
+        $response->done(function (Response $result) {
             $this->assertFalse($result->isSuccess());
-        }, function () {
-            $this->fail('This should not happen');
         });
+    }
+
+
+    public function test_setCtAbx_can_handle_notification_from_server()
+    {
+        $ctValue = -100;
+        $effect = 'foo';
+        $duration = 10;
+        $buffer = json_encode(
+                ['id' => hexdec($this->bulb->getId()), 'method' => 'set_ct_abx', 'params' => [
+                    $ctValue, $effect, $duration
+                ]]
+            )."\r\n";
+
+        $this->socket
+            ->expects($this->once())
+            ->method('send')
+            ->with($buffer, Bulb::NO_FLAG);
+
+        $this->socket
+            ->expects($this->once())
+            ->method('read')
+            ->with(Bulb::PACKET_LENGTH)
+            ->willReturn(self::SUCCESS_RESPONSE.self::NOTIFICATION_RESPONSE);
+
+        $response = $this->bulb->setCtAbx($ctValue, $effect, $duration);
+
+        $response->done(
+            function (Response $result) {
+                $this->assertTrue($result->isSuccess());
+            }
+        );
+    }
+
+
+    public function test_setCtAbx_can_handle_notification_before_response_from_server()
+    {
+        $ctValue = -100;
+        $effect = 'foo';
+        $duration = 10;
+        $buffer = json_encode(
+                ['id' => hexdec($this->bulb->getId()), 'method' => 'set_ct_abx', 'params' => [
+                    $ctValue, $effect, $duration
+                ]]
+            )."\r\n";
+
+        $this->socket
+            ->expects($this->once())
+            ->method('send')
+            ->with($buffer, Bulb::NO_FLAG);
+
+        $this->socket
+            ->expects($this->exactly(2))
+            ->method('read')
+            ->with(Bulb::PACKET_LENGTH)
+            ->willReturn(self::NOTIFICATION_RESPONSE,self::SUCCESS_RESPONSE);
+
+        $response = $this->bulb->setCtAbx($ctValue, $effect, $duration);
+
+        $response->done(
+            function (Response $result) {
+                $this->assertTrue($result->isSuccess());
+            }
+        );
     }
 
     public function test_setRgb()
@@ -357,10 +418,8 @@ class BulbTest extends \PHPUnit\Framework\TestCase
             ->willReturn(json_encode($response));
 
         $result = $this->bulb->cronGet($type);
-        $result->then(function (Response $result) use ($response) {
+        $result->done(function (Response $result) use ($response) {
             $this->assertEquals(new Response($response), $result);
-        }, function () {
-            $this->fail('This should not happen');
         });
     }
 

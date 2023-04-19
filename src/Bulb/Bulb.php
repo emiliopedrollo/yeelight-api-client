@@ -130,20 +130,22 @@ class Bulb
     private function read(): Promise
     {
         return new Promise(function (callable $resolve, callable $reject) {
-            $raw = $this->socket->read(self::PACKET_LENGTH);
+            do {
+                $raw = $this->socket->read(self::PACKET_LENGTH);
 
-            $messages = explode("\r\n", $raw);
+                $messages = array_filter(explode("\r\n", $raw));
 
-            $response = null;
+                $response = null;
 
-            foreach ($messages as $message) {
-                $message = new Response(json_decode($message, true));
-                if ($message->isNotification()) {
-                    $this->handleNotification($message->getResult());
-                    continue;
+                foreach ($messages as $message) {
+                    $message = new Response(json_decode($message, true));
+                    if ($message->isNotification()) {
+                        $this->handleNotification($message->getResult());
+                        continue;
+                    }
+                    $response = $message;
                 }
-                $response = $message;
-            }
+            } while (is_null($response));
 
             if ($response->isSuccess()) {
                 $resolve($response);
