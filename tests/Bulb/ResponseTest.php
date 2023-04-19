@@ -2,11 +2,12 @@
 
 namespace tests\Bulb;
 
+use PHPUnit\Framework\TestCase;
 use Yeelight\Bulb\Exceptions\BulbCommandException;
 use Yeelight\Bulb\Exceptions\InvalidResponseException;
 use Yeelight\Bulb\Response;
 
-class ResponseTest extends \PHPUnit_Framework_TestCase
+class ResponseTest extends TestCase
 {
     public function test_success_Response()
     {
